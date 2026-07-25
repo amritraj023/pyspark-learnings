@@ -161,3 +161,38 @@ customers_rank_df = (
 )
 print("Rank customers within each city::")
 customers_rank_df.show()
+
+# top 3 orders for each user using rank
+
+windowSpec_order_rank = (
+    Window.partitionBy("user_id")
+    .orderBy(desc(col("total_amount")))
+)
+
+top3_orders_df = (
+    orders_df.withColumn("order_rank_top3",
+                         rank().over(windowSpec_order_rank))
+    .filter(col("order_rank_top3") <= 3)
+)
+
+print("Top 3 orders for each user::")
+top3_orders_df.show()
+
+# Find the second highest order for every customer
+
+windowSpec_2nd_highest = (
+    Window.partitionBy("user_id")
+    .orderBy(desc(col("total_amount")))
+)
+
+highest_2nd_customers_df = (
+    orders_df.withColumn("order_rank_top2",
+                         row_number().over(windowSpec_2nd_highest
+                                           )
+).filter(col("order_rank_top2") == 2
+).drop("order_rank_top2")
+
+)
+print("2nd highest order for each customer:")
+highest_2nd_customers_df.show()
+
