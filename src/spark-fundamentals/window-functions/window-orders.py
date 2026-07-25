@@ -1,5 +1,5 @@
 from pyspark.sql.window import Window
-from pyspark.sql.functions import row_number, desc, col
+from pyspark.sql.functions import row_number, desc, col, sum, rank, round
 from pyspark.sql import SparkSession
 
 spark = (SparkSession.builder.appName("user-orders-window")
@@ -87,3 +87,77 @@ deduplicate_order_df = (
                          ).filter(col("order_rank") == 1).drop("order_rank")
 )
 deduplicate_order_df.show()
+
+
+# top 5 orders in each city
+
+windowSpec_top5 = (
+    Window.partitionBy("city")
+    .orderBy(desc(col("total_amount")))
+)
+
+top5_customers_df = (
+    users_df.alias("u").join(
+        orders_df.alias("o"), col("u.user_id") == col("o.user_id"),
+        "inner"
+    ).withColumn("city_rank",
+                 row_number().over(windowSpec_top5)
+    ).filter(col("city_rank") <=5)
+    .select(
+        col("u.name"),
+        col("u.user_id"),
+        col("u.city").alias("city"),
+        col("o.order_id"),
+        col("o.total_amount"),
+        col("city_rank")
+    )
+)
+print("top 5 orders in each city ")
+top5_customers_df.show()
+
+# latest order for each customer in each order status
+
+windowSpec_latest_order = (
+    Window.partitionBy("user_id","order_status")
+    .orderBy(desc(col("order_date")))
+)
+
+latest_order_df = (
+    orders_df.withColumn("order_status_rank",
+                         row_number().over(windowSpec_latest_order)
+                         ).filter(col("order_status_rank") == 1).drop("order_status_rank")
+)
+
+print("latest order for each customer in each order status::")
+latest_order_df.show()
+
+# rank customers by total spending in each city
+
+# Join users and orders to get total spending per user
+
+customers_spending_df = (
+    users_df.alias("u").join(
+        orders_df.alias("o") , col("u.user_id") == col("o.user_id"),
+        "inner"
+    ).groupBy(
+        "u.user_id",
+        "u.name",
+        "u.city"
+    ).agg(
+        round(sum("total_amount"),2).alias("total_spending")
+    )
+)
+
+
+windowSpec_city_rank = (
+    Window.partitionBy("city")
+    .orderBy(desc(col("total_spending")))
+)
+
+customers_rank_df = (
+    customers_spending_df.withColumn("city_rank",
+                                     rank().over(windowSpec_city_rank)
+    )
+)
+print("Rank customers within each city::")
+customers_rank_df.show()
