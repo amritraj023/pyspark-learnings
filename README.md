@@ -268,9 +268,6 @@ Contributions are welcome! To contribute:
 - Update documentation and this README when adding new modules
 - Test all examples before submitting
 
-## License
-
-This project is open source and available under the MIT License.
 
 ## Resources
 
