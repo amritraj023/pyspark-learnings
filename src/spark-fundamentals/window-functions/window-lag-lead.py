@@ -22,13 +22,10 @@ orders_df = spark.read.format("csv") \
     .option("inferSchema", "true") \
     .load(DATA_PATH + order_file)
 
-
 reviews_df = spark.read.format("csv") \
     .option("header", "true") \
     .option("inferSchema", "true") \
     .load(DATA_PATH + reviews_file)
-
-
 
 windowSpec_order = (
     Window.partitionBy("user_id")
@@ -72,7 +69,6 @@ growth_df = (
 print("growth data with lag")
 growth_df.show()
 
-
 # next order date
 next_order_df = (
     orders_df.withColumn("next_order_date",
@@ -92,17 +88,16 @@ windowSpec_review = (
 
 review_df = (
     reviews_df.withColumn("previous_rating",
-                         lag("rating").over(windowSpec_review)
-                         ).withColumn("status",
-                                when(col("previous_rating").isNull(), "first review")
-                                .when(col("rating") > col("previous_rating"), "improved")
-                                .when(col("rating") < col("previous_rating"), "declined")
-                                .otherwise("No changes")
-                        )
+                          lag("rating").over(windowSpec_review)
+                          ).withColumn("status",
+                                       when(col("previous_rating").isNull(), "first review")
+                                       .when(col("rating") > col("previous_rating"), "improved")
+                                       .when(col("rating") < col("previous_rating"), "declined")
+                                       .otherwise("No changes")
+                                       )
 )
 print("review data with lag")
 review_df.show()
-
 
 # Find customers whose latest order amount is greater than their previous order amount
 
@@ -122,17 +117,14 @@ customer_growth_df = (
                          lag("total_amount").over(history_window)
                          ).withColumn("order_rank",
                                       row_number().over(latest_window)
-                         ).filter(
-                            (col("order_rank") == 1) &
-                            (col("total_amount") > col("previous_amount"))
-                        ).drop("order_rank")
+                                      ).filter(
+        (col("order_rank") == 1) &
+        (col("total_amount") > col("previous_amount"))
+    ).drop("order_rank")
 )
-
-
 
 print("customer growth data with lag")
 customer_growth_df.show()
-
 
 # Find customers whose next order is smaller than the current order
 
@@ -140,8 +132,8 @@ declining_orders_df = (
     orders_df.withColumn("next_amount",
                          lead("total_amount").over(history_window)
                          ).filter(
-                            (col("next_amount").isNotNull()) &
-                            (col("total_amount") > col("next_amount"))
+        (col("next_amount").isNotNull()) &
+        (col("total_amount") > col("next_amount"))
     )
 )
 
